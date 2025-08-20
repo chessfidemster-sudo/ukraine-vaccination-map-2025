@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Карта вакцинації — Івано-Франківська область</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="data.js"></script>
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    .info-window-content h3 { margin: 0; font-size: 16px; }
+    .info-window-content p  { margin: 4px 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+
+<script>
+const map = L.map('map').setView([48.62, 24.71], 9);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+// Іконки для маркерів
+const iconBase = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/';
+const shadow   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png';
+
+const redIcon   = new L.Icon({iconUrl: iconBase + 'marker-icon-2x-red.png',   shadowUrl: shadow, iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+const greenIcon = new L.Icon({iconUrl: iconBase + 'marker-icon-2x-green.png', shadowUrl: shadow, iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+const blueIcon  = new L.Icon({iconUrl: iconBase + 'marker-icon-2x-blue.png',  shadowUrl: shadow, iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+
+// Данні про лікарні (укорочено — вставляй весь масив сюди)
+const hospitals = [
+  {name: 'Тлумацький ЦПМСД', lat: 48.8597, lng: 25.0058, load: 17.0},
+{name: 'Обертинський ЦПМСД', lat: 48.697679,  lng: 25.170857, load: 50.8},
+{name: 'Олешанська АЗПСМ', lat: 48.83, lng: 25.13, load: 29.8},
+{name: 'НейроГлобал', lat: 48.908325, lng: 24.675743, load: 29.7},
+{name: 'Коломийський рЦПМСД', lat: 48.5336, lng: 25.0502, load: 9.8},
+{name: 'Коломийський мЦПМСД', lat: 48.529, lng: 25.0402, load: 97.8},
+{name: 'Матієвецький ЦПМСД', lat: 48.499997,  lng: 25.161644, load: 98.9},
+{name: 'Нижньовербізький ЦПМСД', lat: 48.405746,  lng: 24.850678, load: 94.5},
+{name: 'Долинський ЦПМСД', lat: 48.9706, lng: 23.99, load: 50.3},
+{name: 'Болехівський ЦПМСД', lat: 49.0635, lng: 23.8552, load: 54.1},
+{name: 'Вигодський ЦПМСД', lat: 48.9206, lng: 23.90, load: 22.5},
+{name: 'Рожнятівський ЦПМСД', lat: 48.93, lng: 24.14, load: 20.1},
+{name: 'Брошнів-Осадська лікарня', lat: 48.99, lng: 24.18, load: 30.3},
+{name: 'Делятинський ЦПМСД', lat: 48.5353, lng: 24.6412, load: 27.2},
+{name: 'Ворохтянська ЛАЗПМС', lat: 48.274, lng: 24.5796, load: 82.1},
+{name: 'Надвірнянський ЦПМСД', lat: 48.63, lng: 24.57, load: 5.2},
+{name: 'Пасічнянський ЦПМСД', lat: 48.57, lng: 24.42, load: 38.1},
+{name: 'Переріслянська ЛАЗПМС', lat: 48.70, lng: 24.63, load: 29.3},
+{name: 'Дитяча лікарня (Надвірна)', lat: 48.632823, lng: 24.555889, load: 28.3},
+{name: 'Яремчанський ЦПМСД', lat: 48.45, lng: 24.5578, load: 40.6},
+{name: 'Делятинська МЛ', lat: 48.534, lng: 24.64, load: 25.9},
+{name: 'Калуський МЦПМСД', lat: 49.04, lng: 24.35, load: 52.9},
+{name: 'Войнилівський ЦПМСД', lat: 48.96, lng: 24.33, load: 32.8},
+{name: 'Новицький ЦПМСД', lat: 48.9683, lng: 24.2871, load: 90.2},
+{name: 'Верхнянський ЦПМСД', lat: 48.9881, lng: 24.30, load: 91.5},
+{name: 'Рогатинський ЦПМСД', lat: 49.4083, lng: 24.6178, load: 59.5},
+{name: 'Бурштинський ЦПМСД', lat: 49.24, lng: 24.62, load: 80.6},
+{name: 'Галицький ЦПМСД', lat: 49.119, lng: 24.737, load: 50.0},
+{name: 'Більшівцівський ЦПМСД', lat: 49.184, lng: 24.73, load: 39.3},
+{name: 'Букачівський ЦПМСД', lat: 49.25, lng: 24.497, load: 107.3},
+{name: 'Богородчанський ЦПМСД', lat: 48.8107, lng: 24.5424, load: 39.7},
+{name: 'Дзвиняцький ЦПМСД', lat: 48.74, lng: 24.42, load: 51.7},
+{name: 'Солотвинська лікарня', lat: 48.70, lng: 24.42, load: 32.3},
+{name: 'Старобогородчанська НАПГ', lat: 48.82, lng: 24.52, load: 25.0},
+{name: 'Єзупільська МЛ', lat: 49.04, lng: 24.77, load: 41.7},
+{name: 'Загвіздянський ЦПМСД', lat: 48.92, lng: 24.66, load: 29.7},
+{name: 'Лисецька лікарня', lat: 48.86, lng: 24.60, load: 30.6},
+{name: 'Тисменицька МЛ', lat: 48.9071, lng: 24.8483, load: 43.9},
+{name: 'Угринівський ЦПМСД', lat: 48.95, lng: 24.70, load: 23.4},
+{name: 'Ямницький ЦПМСД', lat: 48.9941, lng: 24.7008, load: 39.6},
+{name: 'Верховинська БЛ', lat: 48.15, lng: 24.81, load: 39.5},
+{name: 'Верховинський ЦПМСД', lat: 48.154, lng: 24.830, load: 41.3},
+{name: 'Яблуницька АЗПСМ', lat: 48.3024, lng: 24.4801, load: 34.5},
+{name: 'Білоберізька АЗПСМ', lat: 48.146345, lng: 25.068214, load: 62.0},
+{name: 'Косівська ЦРЛ', lat: 48.32, lng: 25.10, load: 36.1},
+{name: 'Кутська МЛ', lat: 48.262726, lng: 25.183136, load: 41.0},
+{name: 'Яблунівська РЛ', lat: 48.39952, lng: 24.938611, load: 29.7},
+{name: 'Рожнівська АЗПСМ', lat: 48.365, lng: 25.2293, load: 49.0},
+{name: 'Космацька АЗПСМ', lat: 48.32, lng: 24.81, load: 42.7},
+{name: 'Городенківський НЦПМСД', lat: 48.6638, lng: 25.4978, load: 98.8},
+{name: 'Заболотівська БЛ', lat: 48.46, lng: 25.28, load: 98.5},
+{name: 'Снятинський ЦПМСД', lat: 48.45, lng: 25.55689, load: 98.0} ];
+
+// Визначення кольору іконки
+function iconByLoad(load) {
+  if (load < 50) return redIcon;
+  if (load < 65) return greenIcon;
+  return blueIcon;
+}
+
+// Додавання маркерів
+hospitals.forEach(h => {
+  L.marker([h.lat, h.lng], {icon: iconByLoad(h.load)}).addTo(map)
+    .bindPopup(`<div class="info-window-content">
+      <h3>${h.name}</h3>
+      <p><b>Охоплення щепленнями КПК-1:</b> ${h.load}%</p>
+    </div>`);
+});
+
+// === Районні межі видалені - показуємо тільки межі області ===
+
+// Фільтрування GeoJSON даних для знаходження Івано-Франківської області
+const ivanoFrankivskOblast = geojsonData.features.find(feature => 
+  feature.properties && 
+  (feature.properties.shapeName === "Ivano-Frankivsk Oblast" || 
+   feature.properties.shapeName === "Івано-Франківська область" ||
+   feature.properties.shapeISO === "UA-26")
+);
+
+// Функція для обробки кожного об'єкта GeoJSON
+function onEachFeature(feature, layer) {
+  if (feature.properties && feature.properties.shapeName) {
+    layer.bindPopup(`<div class="info-window-content">
+      <h3>${feature.properties.shapeName}</h3>
+      <p><strong>ISO код:</strong> ${feature.properties.shapeISO}</p>
+      <p><strong>Тип:</strong> ${feature.properties.shapeType}</p>
+    </div>`);
+  }
+}
+
+// Додавання кордонів Івано-Франківської області
+if (ivanoFrankivskOblast) {
+  L.geoJSON(ivanoFrankivskOblast, {
+    style: { color: 'red', weight: 5, fillOpacity: 0.1 },
+    onEachFeature: onEachFeature
+  }).addTo(map);
+  console.log('Івано-Франківська область знайдена та додана на карту');
+} else {
+  console.error('Івано-Франківська область не знайдена в geojsonData');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+window.month9Hospitals = [];

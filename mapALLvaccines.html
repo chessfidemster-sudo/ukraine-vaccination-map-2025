@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Карта вакцинації — Івано-Франківська область</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="data.js"></script>
+  <script src="month7.js"></script>
+  <script src="month8.js"></script>
+  <script src="month9.js"></script>
+  <script src="month10.js"></script>
+  <script src="month11.js"></script>
+  <script src="month12.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    #map { height: calc(100% - 60px); }
+    .info-window-content h3 { margin: 0; font-size: 16px; }
+    .info-window-content p  { margin: 4px 0; font-size: 14px; }
+    
+    /* Стилі для панелі фільтрів */
+    .filter-panel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      max-width: 600px;
+    }
+    
+    .filter-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .filter-btn {
+      padding: 6px 12px;
+      border: 2px solid #007cba;
+      background: white;
+      color: #007cba;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+    }
+    
+    .filter-btn:hover {
+      background: #f0f8ff;
+    }
+    
+    .filter-btn.active {
+      background: #007cba;
+      color: white;
+    }
+    
+    .filter-title {
+      font-weight: bold;
+      color: #333;
+      margin: 0 0 5px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="filter-panel">
+  <div class="filter-title">Фільтр за періодом:</div>
+  <div class="filter-buttons">
+    <button class="filter-btn active" data-months="7">7 місяців</button>
+    <button class="filter-btn" data-months="8">8 місяців</button>
+    <button class="filter-btn" data-months="9">9 місяців</button>
+    <button class="filter-btn" data-months="10">10 місяців</button>
+    <button class="filter-btn" data-months="11">11 місяців</button>
+    <button class="filter-btn" data-months="12">12 місяців</button>
+  </div>
+</div>
+<div id="map"></div>
+
+<script>
+const map = L.map('map').setView([48.62, 24.71], 9);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+// Іконки для маркерів
+const iconBase = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/';
+const shadow   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png';
+
+const redIcon   = new L.Icon({iconUrl: iconBase + 'marker-icon-2x-red.png',   shadowUrl: shadow, iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+const greenIcon = new L.Icon({iconUrl: iconBase + 'marker-icon-2x-green.png', shadowUrl: shadow, iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+const blueIcon  = new L.Icon({iconUrl: iconBase + 'marker-icon-2x-blue.png',  shadowUrl: shadow, iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+
+// Глобальні змінні для фільтрації
+let currentMarkers = [];
+let currentFilter = 'all';
+
+// Дані лікарень тепер постачаються окремими файлами за місяцями (month7.js ... month12.js)
+// Будуємо об'єднаний масив лікарень із позначкою місяця
+const months = [7, 8, 9, 10, 11, 12];
+const monthDataMap = {
+  7: (window.month7Hospitals || []),
+  8: (window.month8Hospitals || []),
+  9: (window.month9Hospitals || []),
+  10: (window.month10Hospitals || []),
+  11: (window.month11Hospitals || []),
+  12: (window.month12Hospitals || [])
+};
+
+const hospitals = months.flatMap(m => (monthDataMap[m] || []).map(h => ({ ...h, lastUpdated: m })));
+
+// Базовий набір для 7 місяців (для порівняння у попапах)
+const sevenMonthHospitals = (monthDataMap[7] || []).map(h => ({ ...h, lastUpdated: 7 }));
+
+// Функція для отримання оригінальних назв вакцин
+function getVaccineName(vaccine) {
+  const names = {
+    bcg: 'БЦЖ',
+    hepB: 'Гепатит B',
+    dtp: 'АКДП',
+    polio: 'Поліомієліт',
+    hib: 'Хіб-інфекція',
+    mmr: 'КПК (кір, паротит, краснуха)'
+  };
+  return names[vaccine] || vaccine;
+}
+
+// Визначення кольору іконки на основі середнього відсотка вакцинації
+function iconByVaccines(vaccines) {
+  const average = calculateAverage(vaccines);
+  if (average < 50) return blueIcon;
+  if (average < 65) return greenIcon;
+  return redIcon;
+}
+
+// Розрахунок середнього відсотка вакцинації (тільки для наданих вакцин)
+function calculateAverage(vaccines) {
+  const values = Object.values(vaccines).filter(value => value !== null && value !== undefined && value !== 0 && value !== '');
+  if (values.length === 0) return 0;
+  const sum = values.reduce((acc, val) => acc + val, 0);
+  return Math.round(sum / values.length);
+}
+
+// Форматування значення вакцини для відображення
+function formatVaccineValue(value) {
+  return (value === null || value === undefined || value === '') ? 'N/A' : `${value}%`;
+}
+
+// Функція для додавання маркерів з фільтрацією
+function addMarkersWithFilter(monthsFilter = 'all') {
+  // Очищення існуючих маркерів
+  currentMarkers.forEach(marker => map.removeLayer(marker));
+  currentMarkers = [];
+  
+  // Фільтрація лікарень за періодом
+  const filteredHospitals = hospitals.filter(h => {
+    return h.lastUpdated <= parseInt(monthsFilter);
+  });
+  
+  // Розрахунок змін між періодами (для будь-якого місяця > 7)
+  let changeInfo = '';
+  const selectedMonth = parseInt(monthsFilter);
+  if (!Number.isNaN(selectedMonth) && selectedMonth > 7) {
+    const currentMonthHospitals = hospitals.filter(h => h.lastUpdated === selectedMonth);
+    // За замовчуванням повідомлення про зміни; значення однакові, тому різниця буде 0
+    const totalHospitals = currentMonthHospitals.length;
+    changeInfo = `<br><strong>Зміни:</strong> ${totalHospitals} закладів, відображено дані за ${selectedMonth} місяців (порівняно з 7 місяцями)`;
+  }
+  
+  // Додавання маркерів для відфільтрованих лікарень
+  filteredHospitals.forEach(h => {
+    const avgCoverage = calculateAverage(h.vaccines);
+    let popupContent = `<div class="info-window-content">
+      <h3>${h.name}</h3>
+      <p><strong>Середній відсоток вакцинації:</strong> ${avgCoverage.toFixed(1)}%</p>
+      <p><strong>Охоплення щепленнями за:</strong> ${h.lastUpdated} місяців</p>`;
+    
+    // Якщо це дані за місяць > 7, показуємо зміни відносно 7-місячних (за збігом назви закладу)
+    if (h.lastUpdated > 7) {
+      const baseline = sevenMonthHospitals.find(s => s.name === h.name);
+      if (baseline) {
+        const originalAvg = calculateAverage(baseline.vaccines);
+        const avgChange = avgCoverage - originalAvg;
+        const sign = avgChange >= 0 ? '+' : '';
+        popupContent += `<p><strong>Зміна середнього покриття:</strong> <span style="color: ${avgChange >= 0 ? 'green' : 'red'};">${sign}${avgChange.toFixed(1)}%</span></p>`;
+        
+        // Показуємо зміни для кожної вакцини
+        popupContent += `<div style="margin-top: 10px;"><strong>Зміни по вакцинах:</strong></div>`;
+        Object.keys(h.vaccines).forEach(vaccine => {
+          const current = h.vaccines[vaccine];
+          const original = baseline.vaccines[vaccine];
+          const change = (current ?? 0) - (original ?? 0);
+          const signV = change >= 0 ? '+' : '';
+          const vaccineName = getVaccineName(vaccine);
+          popupContent += `<p><strong>${vaccineName}:</strong> ${formatVaccineValue(current)} <span style=\"color: ${change >= 0 ? 'green' : 'red'};\">(${signV}${change.toFixed(1)}%)</span></p>`;
+        });
+      } else {
+        // Якщо базові дані не знайдені, показуємо лише поточні значення
+        Object.keys(h.vaccines).forEach(vaccine => {
+          const vaccineName = getVaccineName(vaccine);
+          popupContent += `<p><strong>${vaccineName}:</strong> ${formatVaccineValue(h.vaccines[vaccine])}</p>`;
+        });
+      }
+    } else {
+      // Звичайний вигляд для 7-місячних даних
+      Object.keys(h.vaccines).forEach(vaccine => {
+        const vaccineName = getVaccineName(vaccine);
+        popupContent += `<p><strong>${vaccineName}:</strong> ${formatVaccineValue(h.vaccines[vaccine])}</p>`;
+      });
+    }
+    
+    popupContent += `</div>`;
+    
+    const marker = L.marker([h.lat, h.lng], {icon: iconByVaccines(h.vaccines)}).addTo(map)
+      .bindPopup(popupContent);
+    
+    currentMarkers.push(marker);
+  });
+  
+  // Оновлення інформації про кількість показаних лікарень
+  console.log(`Показано ${filteredHospitals.length} з ${hospitals.length} лікарень для періоду: ${monthsFilter + ' місяців'}`);
+  
+  // Додавання інформації про зміни до панелі
+  const filterTitle = document.querySelector('.filter-title');
+  if (changeInfo) {
+    filterTitle.innerHTML = `Фільтр за періодом:${changeInfo}`;
+  } else {
+    filterTitle.innerHTML = 'Фільтр за періодом:';
+  }
+}
+
+// Ініціалізація маркерів
+addMarkersWithFilter('7');
+
+// === Районні межі видалені - показуємо тільки межі області ===
+
+// Фільтрування GeoJSON даних для знаходження Івано-Франківської області
+const ivanoFrankivskOblast = geojsonData.features.find(feature => 
+  feature.properties && 
+  (feature.properties.shapeName === "Ivano-Frankivsk Oblast" || 
+   feature.properties.shapeName === "Івано-Франківська область" ||
+   feature.properties.shapeISO === "UA-26")
+);
+
+// Функція для обробки кожного об'єкта GeoJSON
+function onEachFeature(feature, layer) {
+  if (feature.properties && feature.properties.shapeName) {
+    layer.bindPopup(`<div class="info-window-content">
+      <h3>${feature.properties.shapeName}</h3>
+      <p><strong>ISO код:</strong> ${feature.properties.shapeISO}</p>
+      <p><strong>Тип:</strong> ${feature.properties.shapeType}</p>
+    </div>`);
+  }
+}
+
+// Додавання кордонів Івано-Франківської області
+if (ivanoFrankivskOblast) {
+  L.geoJSON(ivanoFrankivskOblast, {
+    style: { color: 'red', weight: 5, fillOpacity: 0.1 },
+    onEachFeature: onEachFeature
+  }).addTo(map);
+  console.log('Івано-Франківська область знайдена та додана на карту');
+} else {
+  console.error('Івано-Франківська область не знайдена в geojsonData');
+}
+
+// Обробка кліків по кнопках фільтрів
+document.addEventListener('DOMContentLoaded', function() {
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  
+  filterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Зняття активного стану з усіх кнопок
+      filterButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Додавання активного стану до натиснутої кнопки
+      this.classList.add('active');
+      
+      // Отримання значення фільтра
+      const monthsFilter = this.getAttribute('data-months');
+      currentFilter = monthsFilter;
+      
+      // Застосування фільтра
+      addMarkersWithFilter(monthsFilter);
+    });
+  });
+});
+
+</script>
+</body>
+</html>
