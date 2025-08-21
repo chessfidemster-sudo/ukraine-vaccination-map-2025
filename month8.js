@@ -31,7 +31,7 @@ window.month8Hospitals = [
     {name: 'ФОП Прайс Р.Р.', lat: 48.53433021514356, lng: 25.046667834956644, vaccines: {bcg: 48, hepB: 45, dtp: 51, polio: 47, hib: 43, mmr: 49}},
     {name: 'ФОП Угорська', lat: 48.52650420367341, lng: 25.060829353018885, vaccines: {bcg: 47, hepB: 44, dtp: 50, polio: 46, hib: 42, mmr: 48}},
     {name: 'КНП Городенківська БЛІЛ', lat: 48.66435396889664, lng: 25.49198568470594, vaccines: {bcg: 50.7, hepB: 58.3, dtp: 0, polio: 0, hib: 0, mmr: 0}},
-    {name: 'КНП Заболотівська БЛ', lat: 48.47, lng: 25.286, vaccines: {bcg: 0, hepB: 0, dtp: 52, polio: 56, hib: 54, mmr: 62}},
+    {name: 'КНП Заболотівська БЛ', lat: 48.47, lng: 25.29, vaccines: {bcg: 0, hepB: 0, dtp: 52, polio: 56, hib: 54, mmr: 62}},
     {name: 'КНП Снятинський ЦПМСД', lat: 48.4515310037049, lng: 25.55581996666315, vaccines: {bcg: 0, hepB: 0, dtp: 62.3, polio: 57.8, hib: 51.3, mmr: 65.6}},
     {name: 'КП Городенківський НЦПМСД', lat: 48.66435130163961, lng: 25.491951090784376, vaccines: {bcg: 0, hepB: 0, dtp: 83.9, polio: 71.3, hib: 92, mmr: 98.9}},
     {name: 'ФОП Білик Роман Павлович', lat: 48.468537859144185, lng: 25.28497017144529, vaccines: {bcg: 0, hepB: 0, dtp: 67.3, polio: 61.8, hib: 61.8, mmr: 96.4}},
