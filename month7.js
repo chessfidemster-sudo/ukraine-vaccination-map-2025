@@ -90,7 +90,7 @@ window.month7Hospitals = [
   {name: 'ТзОВ МЕДЮНІОН', lat: 49.03038179058153, lng: 24.3594038, vaccines: {bcg: 0, hepB: 0, dtp: 50, polio: 65.6, hib: 21.9, mmr: 50}},
   {name: 'ФОП Картушова Анна Олегівна (Family clinic)', lat: 49.02967153026346, lng: 24.363418946710574, vaccines: {bcg: 0, hepB: 0, dtp: 53.1, polio: 57.1, hib: 62.2, mmr: 55.1}},
   {name: 'ФОП Обрізко Оксана Михайлівна', lat: 49.04127071022772, lng: 24.354115529635127, vaccines: {bcg: 0, hepB: 0, dtp: 72, polio: 100, hib: 100, mmr: 92}},
-  {name: 'ФОП Іванюк Надія Степанівна (Медлайф)', lat: 49.02982499107063, lng: 24.36544073233268, vaccines: {bcg: 0, hepB: 44, dtp: 84, polio: 68, hib: 76, mmr: 92}},
+  {name: 'ФОП Іванюк Надія Степанівна', lat: 49.02982499107063, lng: 24.36544073233268, vaccines: {bcg: 0, hepB: 44, dtp: 84, polio: 68, hib: 76, mmr: 92}},
   {name: 'КНП Богородчанська ЦЛ', lat: 48.811537371297106, lng: 24.544374433731534, vaccines: {bcg: 55.9, hepB: 54.9, dtp: 0, polio: 0, hib: 0, mmr: 0}},
   {name: 'КНП Лисецька лікарня', lat: 48.86777165352391, lng: 24.61322644020338, vaccines: {bcg: 0, hepB: 0, dtp: 38.5, polio: 19.2, hib: 50, mmr: 83.3}},
   {name: 'КНП Тисменицька міська лікарня', lat: 48.90039070165385, lng: 24.845364346534033, vaccines: {bcg: 0, hepB: 0, dtp: 59.7, polio: 61.2, hib: 61.2, mmr: 68}},
